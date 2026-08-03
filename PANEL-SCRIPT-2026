@@ -1,0 +1,863 @@
+-- ALEX FF PANEL | V1 Free versión
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local Settings = {
+    Lines = false,
+    GreenHologram = false,
+    Skeleton = false,
+    BlueArms = false,
+
+    Aimbot = false,
+    AimbotFOV = 150,
+    AimbotSmooth = 0.2,
+    TeamCheck = true,
+    Headshot100 = false,
+
+    Speed = false,
+    SpeedValue = 28,
+    JumpPower = false,
+    JumpValue = 50,
+
+    AntiBan = false,
+    BypassPanel = false,
+    HitboxExpander = false,
+    HitboxSize = 6,
+    HitboxColor = Color3.fromRGB(255, 50, 50),
+    AimAssist = false,
+    CrosshairColor = Color3.fromRGB(255, 50, 50)
+}
+
+local Theme = {
+    Background = Color3.fromRGB(12, 12, 15),
+    Secondary = Color3.fromRGB(22, 22, 28),
+    Accent = Color3.fromRGB(255, 20, 20),
+    AccentDark = Color3.fromRGB(180, 10, 10),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextDark = Color3.fromRGB(180, 180, 180),
+    ToggleOn = Color3.fromRGB(255, 20, 20),
+    ToggleOff = Color3.fromRGB(50, 50, 55)
+}
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AlexFFPanel"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Size = UDim2.new(0, 400, 0, 440)          -- Más largo y menos gordo
+Main.Position = UDim2.new(0.5, -200, 0.5, -220)
+Main.BackgroundColor3 = Theme.Background
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.ClipsDescendants = true
+Main.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 16)
+MainCorner.Parent = Main
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Theme.Accent
+MainStroke.Thickness = 2
+MainStroke.Parent = Main
+
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 68, 1, 0)
+Sidebar.BackgroundColor3 = Theme.Secondary
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = Main
+
+local SidebarCorner = Instance.new("UICorner")
+SidebarCorner.CornerRadius = UDim.new(0, 16)
+SidebarCorner.Parent = Sidebar
+
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, -68, 0, 42)
+TopBar.Position = UDim2.new(0, 68, 0, 0)
+TopBar.BackgroundColor3 = Theme.Background
+TopBar.BorderSizePixel = 0
+TopBar.Parent = Main
+
+-- Drag solo desde TopBar
+local dragging, dragStart, startPos = false, nil, nil
+TopBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Main.Position
+    end
+end)
+TopBar.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -50, 1, 0)
+TitleLabel.Position = UDim2.new(0, 12, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "ALEX FF PANEL | V1 Free versión"
+TitleLabel.TextColor3 = Theme.Accent
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TopBar
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(1, -36, 0.5, -14)
+CloseBtn.BackgroundColor3 = Theme.AccentDark
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Theme.Text
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.Parent = TopBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseBtn
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+local Content = Instance.new("Frame")
+Content.Name = "Content"
+Content.Size = UDim2.new(1, -80, 1, -50)
+Content.Position = UDim2.new(0, 74, 0, 46)
+Content.BackgroundTransparency = 1
+Content.Parent = Main
+
+local Tabs = {}
+local CurrentTab = "Main"
+
+local function CreateSidebarButton(name, emoji, order, selected)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, -8, 0, 52)
+    Btn.Position = UDim2.new(0, 4, 0, 6 + (order * 56))
+    Btn.BackgroundColor3 = selected and Theme.Accent or Theme.Secondary
+    Btn.Text = ""
+    Btn.Parent = Sidebar
+
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(0, 10)
+    BtnCorner.Parent = Btn
+
+    local EmojiLabel = Instance.new("TextLabel")
+    EmojiLabel.Size = UDim2.new(1, 0, 0, 24)
+    EmojiLabel.Position = UDim2.new(0, 0, 0, 4)
+    EmojiLabel.BackgroundTransparency = 1
+    EmojiLabel.Text = emoji
+    EmojiLabel.TextSize = 18
+    EmojiLabel.Parent = Btn
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, 0, 0, 16)
+    Label.Position = UDim2.new(0, 0, 0, 30)
+    Label.BackgroundTransparency = 1
+    Label.Text = name
+    Label.TextColor3 = Theme.Text
+    Label.Font = Enum.Font.Gotham
+    Label.TextSize = 10
+    Label.Parent = Btn
+
+    Tabs[name] = Btn
+    return Btn
+end
+
+local TabMain     = CreateSidebarButton("Main",     "🔥", 0, true)
+local TabVisuals  = CreateSidebarButton("Visuals",  "👤", 1, false)
+local TabMisc     = CreateSidebarButton("Misc",     "👹", 2, false)
+local TabSettings = CreateSidebarButton("Settings", "⚙️", 3, false)
+local TabAccount  = CreateSidebarButton("Account",  "📁", 4, false)
+
+local function CreateToggle(parent, text, yPos, default, callback)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, -6, 0, 36)
+    Frame.Position = UDim2.new(0, 3, 0, yPos)
+    Frame.BackgroundColor3 = Theme.Secondary
+    Frame.BorderSizePixel = 0
+    Frame.Parent = parent
+
+    local FrameCorner = Instance.new("UICorner")
+    FrameCorner.CornerRadius = UDim.new(0, 8)
+    FrameCorner.Parent = Frame
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(1, -60, 1, 0)
+    TextLabel.Position = UDim2.new(0, 12, 0, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Text = text
+    TextLabel.TextColor3 = Theme.Text
+    TextLabel.Font = Enum.Font.Gotham
+    TextLabel.TextSize = 14
+    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TextLabel.Parent = Frame
+
+    local ToggleBg = Instance.new("Frame")
+    ToggleBg.Size = UDim2.new(0, 38, 0, 19)
+    ToggleBg.Position = UDim2.new(1, -46, 0.5, -9.5)
+    ToggleBg.BackgroundColor3 = default and Theme.ToggleOn or Theme.ToggleOff
+    ToggleBg.Parent = Frame
+
+    local ToggleCorner = Instance.new("UICorner")
+    ToggleCorner.CornerRadius = UDim.new(1, 0)
+    ToggleCorner.Parent = ToggleBg
+
+    local ToggleCircle = Instance.new("Frame")
+    ToggleCircle.Size = UDim2.new(0, 14, 0, 14)
+    ToggleCircle.Position = default and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+    ToggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleCircle.Parent = ToggleBg
+
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = ToggleCircle
+
+    local enabled = default
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, 0, 1, 0)
+    Btn.BackgroundTransparency = 1
+    Btn.Text = ""
+    Btn.Parent = Frame
+
+    Btn.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad)
+        if enabled then
+            TweenService:Create(ToggleBg, tweenInfo, {BackgroundColor3 = Theme.ToggleOn}):Play()
+            TweenService:Create(ToggleCircle, tweenInfo, {Position = UDim2.new(1, -17, 0.5, -7)}):Play()
+        else
+            TweenService:Create(ToggleBg, tweenInfo, {BackgroundColor3 = Theme.ToggleOff}):Play()
+            TweenService:Create(ToggleCircle, tweenInfo, {Position = UDim2.new(0, 3, 0.5, -7)}):Play()
+        end
+        callback(enabled)
+    end)
+end
+
+local function CreateSlider(parent, text, yPos, defaultValue, callback)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, -6, 0, 50)
+    Frame.Position = UDim2.new(0, 3, 0, yPos)
+    Frame.BackgroundColor3 = Theme.Secondary
+    Frame.BorderSizePixel = 0
+    Frame.Parent = parent
+
+    local FrameCorner = Instance.new("UICorner")
+    FrameCorner.CornerRadius = UDim.new(0, 8)
+    FrameCorner.Parent = Frame
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -20, 0, 20)
+    Title.Position = UDim2.new(0, 12, 0, 4)
+    Title.BackgroundTransparency = 1
+    Title.Text = text .. ": " .. defaultValue
+    Title.TextColor3 = Theme.Text
+    Title.Font = Enum.Font.Gotham
+    Title.TextSize = 13
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Parent = Frame
+
+    local BarBg = Instance.new("Frame")
+    BarBg.Size = UDim2.new(1, -24, 0, 8)
+    BarBg.Position = UDim2.new(0, 12, 0, 30)
+    BarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    BarBg.BorderSizePixel = 0
+    BarBg.Parent = Frame
+
+    local BarBgCorner = Instance.new("UICorner")
+    BarBgCorner.CornerRadius = UDim.new(1, 0)
+    BarBgCorner.Parent = BarBg
+
+    local Fill = Instance.new("Frame")
+    Fill.Size = UDim2.new((defaultValue - 1) / 124, 0, 1, 0)
+    Fill.BackgroundColor3 = Theme.Accent
+    Fill.BorderSizePixel = 0
+    Fill.Parent = BarBg
+
+    local FillCorner = Instance.new("UICorner")
+    FillCorner.CornerRadius = UDim.new(1, 0)
+    FillCorner.Parent = Fill
+
+    local Circle = Instance.new("Frame")
+    Circle.Size = UDim2.new(0, 16, 0, 16)
+    Circle.Position = UDim2.new((defaultValue - 1) / 124, -8, 0.5, -8)
+    Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Circle.BorderSizePixel = 0
+    Circle.Parent = BarBg
+
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = Circle
+
+    local sliding = false
+
+    local function update(value)
+        value = math.clamp(math.floor(value), 1, 125)
+        Fill.Size = UDim2.new((value - 1) / 124, 0, 1, 0)
+        Circle.Position = UDim2.new((value - 1) / 124, -8, 0.5, -8)
+        Title.Text = text .. ": " .. value
+        callback(value)
+    end
+
+    BarBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            sliding = true
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            sliding = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = math.clamp((input.Position.X - BarBg.AbsolutePosition.X) / BarBg.AbsoluteSize.X, 0, 1)
+            update(1 + pos * 124)
+        end
+    end)
+end
+
+local function ClearContent()
+    for _, child in pairs(Content:GetChildren()) do
+        child:Destroy()
+    end
+end
+
+local function ShowPage(name)
+    ClearContent()
+    CurrentTab = name
+    TitleLabel.Text = "ALEX FF PANEL | V1 Free versión"
+
+    for tabName, btn in pairs(Tabs) do
+        btn.BackgroundColor3 = (tabName == name) and Theme.Accent or Theme.Secondary
+    end
+
+    if name == "Main" then
+        CreateToggle(Content, "Aimbot", 4, Settings.Aimbot, function(v) Settings.Aimbot = v end)
+        CreateToggle(Content, "Team Check", 46, Settings.TeamCheck, function(v) Settings.TeamCheck = v end)
+        CreateToggle(Content, "Headshot 100%", 88, Settings.Headshot100, function(v) Settings.Headshot100 = v end)
+
+        local Info = Instance.new("TextLabel")
+        Info.Size = UDim2.new(1, -6, 0, 40)
+        Info.Position = UDim2.new(0, 3, 0, 140)
+        Info.BackgroundTransparency = 1
+        Info.Text = "Hold Right Click = Aimbot\nHeadshot 100% = Head Hitbox Size 6 (Invisible)"
+        Info.TextColor3 = Theme.TextDark
+        Info.Font = Enum.Font.Gotham
+        Info.TextSize = 12
+        Info.TextXAlignment = Enum.TextXAlignment.Left
+        Info.Parent = Content
+
+    elseif name == "Visuals" then
+        CreateToggle(Content, "Lines", 4, Settings.Lines, function(v) Settings.Lines = v end)
+        CreateToggle(Content, "Green Hologram", 46, Settings.GreenHologram, function(v) Settings.GreenHologram = v end)
+        CreateToggle(Content, "Skeleton", 88, Settings.Skeleton, function(v) Settings.Skeleton = v end)
+        CreateToggle(Content, "Blue Hologram Arms", 130, Settings.BlueArms, function(v) Settings.BlueArms = v end)
+
+    elseif name == "Misc" then
+        CreateToggle(Content, "Speed Hack", 4, Settings.Speed, function(v) Settings.Speed = v end)
+        CreateSlider(Content, "Speed Amount", 48, Settings.SpeedValue, function(v) Settings.SpeedValue = v end)
+        CreateToggle(Content, "Jump Hack", 110, Settings.JumpPower, function(v) Settings.JumpPower = v end)
+        CreateSlider(Content, "Jump Amount", 154, Settings.JumpValue, function(v) Settings.JumpValue = v end)
+
+    elseif name == "Settings" then
+        CreateToggle(Content, "Hitbox Expander", 4, Settings.HitboxExpander, function(v) Settings.HitboxExpander = v end)
+        CreateSlider(Content, "Hitbox Size", 48, Settings.HitboxSize, function(v) Settings.HitboxSize = v end)
+        CreateToggle(Content, "Aim Assist (Crosshair)", 110, Settings.AimAssist, function(v) Settings.AimAssist = v end)
+
+        -- Hitbox Color
+        local ColorFrame = Instance.new("Frame")
+        ColorFrame.Size = UDim2.new(1, -6, 0, 50)
+        ColorFrame.Position = UDim2.new(0, 3, 0, 160)
+        ColorFrame.BackgroundColor3 = Theme.Secondary
+        ColorFrame.BorderSizePixel = 0
+        ColorFrame.Parent = Content
+
+        local ColorCorner = Instance.new("UICorner")
+        ColorCorner.CornerRadius = UDim.new(0, 8)
+        ColorCorner.Parent = ColorFrame
+
+        local ColorTitle = Instance.new("TextLabel")
+        ColorTitle.Size = UDim2.new(1, -20, 0, 20)
+        ColorTitle.Position = UDim2.new(0, 12, 0, 4)
+        ColorTitle.BackgroundTransparency = 1
+        ColorTitle.Text = "Hitbox Color"
+        ColorTitle.TextColor3 = Theme.Text
+        ColorTitle.Font = Enum.Font.Gotham
+        ColorTitle.TextSize = 13
+        ColorTitle.TextXAlignment = Enum.TextXAlignment.Left
+        ColorTitle.Parent = ColorFrame
+
+        local colors = {
+            {Color3.fromRGB(255, 50, 50), "Rojo"},
+            {Color3.fromRGB(0, 255, 100), "Verde"},
+            {Color3.fromRGB(0, 150, 255), "Azul"},
+            {Color3.fromRGB(255, 200, 0), "Amarillo"}
+        }
+
+        for i, data in ipairs(colors) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, 28, 0, 18)
+            btn.Position = UDim2.new(0, 12 + (i-1)*36, 0, 26)
+            btn.BackgroundColor3 = data[1]
+            btn.Text = ""
+            btn.Parent = ColorFrame
+
+            local c = Instance.new("UICorner")
+            c.CornerRadius = UDim.new(0, 4)
+            c.Parent = btn
+
+            btn.MouseButton1Click:Connect(function()
+                Settings.HitboxColor = data[1]
+            end)
+        end
+
+        -- Crosshair Color
+        local CrossColorFrame = Instance.new("Frame")
+        CrossColorFrame.Size = UDim2.new(1, -6, 0, 50)
+        CrossColorFrame.Position = UDim2.new(0, 3, 0, 218)
+        CrossColorFrame.BackgroundColor3 = Theme.Secondary
+        CrossColorFrame.BorderSizePixel = 0
+        CrossColorFrame.Parent = Content
+
+        local CrossColorCorner = Instance.new("UICorner")
+        CrossColorCorner.CornerRadius = UDim.new(0, 8)
+        CrossColorCorner.Parent = CrossColorFrame
+
+        local CrossColorTitle = Instance.new("TextLabel")
+        CrossColorTitle.Size = UDim2.new(1, -20, 0, 20)
+        CrossColorTitle.Position = UDim2.new(0, 12, 0, 4)
+        CrossColorTitle.BackgroundTransparency = 1
+        CrossColorTitle.Text = "Crosshair Color"
+        CrossColorTitle.TextColor3 = Theme.Text
+        CrossColorTitle.Font = Enum.Font.Gotham
+        CrossColorTitle.TextSize = 13
+        CrossColorTitle.TextXAlignment = Enum.TextXAlignment.Left
+        CrossColorTitle.Parent = CrossColorFrame
+
+        for i, data in ipairs(colors) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, 28, 0, 18)
+            btn.Position = UDim2.new(0, 12 + (i-1)*36, 0, 26)
+            btn.BackgroundColor3 = data[1]
+            btn.Text = ""
+            btn.Parent = CrossColorFrame
+
+            local c = Instance.new("UICorner")
+            c.CornerRadius = UDim.new(0, 4)
+            c.Parent = btn
+
+            btn.MouseButton1Click:Connect(function()
+                Settings.CrosshairColor = data[1]
+            end)
+        end
+
+    elseif name == "Account" then
+        CreateToggle(Content, "Anti-Ban", 4, Settings.AntiBan, function(v) Settings.AntiBan = v end)
+        CreateToggle(Content, "Bypass-Panel", 46, Settings.BypassPanel, function(v) Settings.BypassPanel = v end)
+
+        local Info = Instance.new("TextLabel")
+        Info.Size = UDim2.new(1, -6, 0, 60)
+        Info.Position = UDim2.new(0, 3, 0, 100)
+        Info.BackgroundTransparency = 1
+        Info.Text = "User: " .. LocalPlayer.Name .. "\n\nALEX FF PANEL | V1 Free"
+        Info.TextColor3 = Theme.Text
+        Info.Font = Enum.Font.Gotham
+        Info.TextSize = 14
+        Info.TextXAlignment = Enum.TextXAlignment.Left
+        Info.Parent = Content
+    end
+end
+
+TabMain.MouseButton1Click:Connect(function() ShowPage("Main") end)
+TabVisuals.MouseButton1Click:Connect(function() ShowPage("Visuals") end)
+TabMisc.MouseButton1Click:Connect(function() ShowPage("Misc") end)
+TabSettings.MouseButton1Click:Connect(function() ShowPage("Settings") end)
+TabAccount.MouseButton1Click:Connect(function() ShowPage("Account") end)
+
+ShowPage("Main")
+
+-- ======================
+-- FEATURES
+-- ======================
+
+local function ApplyGreenChams(character)
+    if not character then return end
+    if character:FindFirstChild("PlayerChams") then character.PlayerChams:Destroy() end
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "PlayerChams"
+    highlight.FillColor = Color3.fromRGB(144, 238, 144)
+    highlight.OutlineColor = Color3.fromRGB(50, 205, 50)
+    highlight.FillTransparency = 0.25
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = character
+end
+
+local function RemoveGreenChams(character)
+    if character and character:FindFirstChild("PlayerChams") then
+        character.PlayerChams:Destroy()
+    end
+end
+
+local function ApplyBlueArms(character)
+    if not character then return end
+    if character:FindFirstChild("BlueArmsChams") then character.BlueArmsChams:Destroy() end
+    local arms = {"LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand", "Left Arm", "Right Arm"}
+    local folder = Instance.new("Folder")
+    folder.Name = "BlueArmsChams"
+    folder.Parent = character
+    for _, armName in ipairs(arms) do
+        local part = character:FindFirstChild(armName)
+        if part then
+            local hl = Instance.new("Highlight")
+            hl.FillColor = Color3.fromRGB(100, 180, 255)
+            hl.OutlineColor = Color3.fromRGB(0, 120, 255)
+            hl.FillTransparency = 0.3
+            hl.OutlineTransparency = 0
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Adornee = part
+            hl.Parent = folder
+        end
+    end
+end
+
+local function RemoveBlueArms(character)
+    if character and character:FindFirstChild("BlueArmsChams") then
+        character.BlueArmsChams:Destroy()
+    end
+end
+
+local tracers = {}
+local function CreateTracer(player)
+    if player == LocalPlayer then return end
+    local attachment0 = Instance.new("Attachment")
+    local attachment1 = Instance.new("Attachment")
+    local beam = Instance.new("Beam")
+    beam.Name = "NeonTracer"
+    beam.Attachment0 = attachment0
+    beam.Attachment1 = attachment1
+    beam.Color = ColorSequence.new(Color3.fromRGB(144, 238, 144))
+    beam.Width0 = 0.15
+    beam.Width1 = 0.15
+    beam.FaceCamera = true
+    beam.LightEmission = 1
+    beam.LightInfluence = 0
+    beam.Transparency = NumberSequence.new(0.1)
+    beam.Segments = 10
+    tracers[player] = {Beam = beam, Att0 = attachment0, Att1 = attachment1}
+end
+
+local function RemoveTracer(player)
+    if tracers[player] then
+        tracers[player].Beam:Destroy()
+        tracers[player].Att0:Destroy()
+        tracers[player].Att1:Destroy()
+        tracers[player] = nil
+    end
+end
+
+local skeletons = {}
+local bonesR15 = {
+    {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"},
+    {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
+    {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
+    {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"},
+    {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"},
+}
+local bonesR6 = {
+    {"Head", "Torso"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"},
+    {"Torso", "Left Leg"}, {"Torso", "Right Leg"},
+}
+
+local function CreateSkeleton(player)
+    if player == LocalPlayer then return end
+    local lines = {}
+    for i = 1, 15 do
+        local line = Drawing.new("Line")
+        line.Visible = false
+        line.Thickness = 1.5
+        line.Color = Color3.fromRGB(144, 238, 144)
+        line.Transparency = 0.2
+        table.insert(lines, line)
+    end
+    skeletons[player] = lines
+end
+
+local function RemoveSkeleton(player)
+    if skeletons[player] then
+        for _, line in pairs(skeletons[player]) do line:Remove() end
+        skeletons[player] = nil
+    end
+end
+
+local originalSizes = {}
+
+local function ExpandHead(player)
+    if player == LocalPlayer then return end
+    local character = player.Character
+    if not character then return end
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+
+    if not originalSizes[player] then
+        originalSizes[player] = head.Size
+    end
+
+    if Settings.Headshot100 then
+        head.Size = Vector3.new(6, 6, 6)
+        head.Transparency = 1
+        head.CanCollide = false
+        head.Material = Enum.Material.Plastic
+
+        if head:FindFirstChild("HitboxHL") then
+            head.HitboxHL:Destroy()
+        end
+
+    elseif Settings.HitboxExpander then
+        local size = Settings.HitboxSize
+        head.Size = Vector3.new(size, size, size)
+        head.Transparency = 0.55
+        head.CanCollide = false
+        head.Material = Enum.Material.ForceField
+
+        if not head:FindFirstChild("HitboxHL") then
+            local hl = Instance.new("Highlight")
+            hl.Name = "HitboxHL"
+            hl.FillColor = Settings.HitboxColor
+            hl.OutlineColor = Settings.HitboxColor
+            hl.FillTransparency = 0.4
+            hl.OutlineTransparency = 0
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Parent = head
+        else
+            head.HitboxHL.FillColor = Settings.HitboxColor
+            head.HitboxHL.OutlineColor = Settings.HitboxColor
+        end
+    end
+end
+
+local function RestoreHead(player)
+    local character = player.Character
+    if not character then return end
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+
+    if originalSizes[player] then
+        head.Size = originalSizes[player]
+        head.Transparency = 0
+        head.Material = Enum.Material.Plastic
+    end
+    if head:FindFirstChild("HitboxHL") then
+        head.HitboxHL:Destroy()
+    end
+end
+
+-- Aim Assist Crosshair
+local crosshair = Drawing.new("Circle")
+crosshair.Visible = false
+crosshair.Thickness = 1.5
+crosshair.NumSides = 20
+crosshair.Radius = 6
+crosshair.Filled = false
+crosshair.Color = Settings.CrosshairColor
+
+local crosshair2 = Drawing.new("Line")
+crosshair2.Visible = false
+crosshair2.Thickness = 1.5
+crosshair2.Color = Settings.CrosshairColor
+
+local crosshair3 = Drawing.new("Line")
+crosshair3.Visible = false
+crosshair3.Thickness = 1.5
+crosshair3.Color = Settings.CrosshairColor
+
+local function SetupPlayer(player)
+    if player == LocalPlayer then return end
+    CreateTracer(player)
+    CreateSkeleton(player)
+
+    if player.Character then
+        if Settings.GreenHologram then ApplyGreenChams(player.Character) end
+        if Settings.BlueArms then ApplyBlueArms(player.Character) end
+        if Settings.Headshot100 or Settings.HitboxExpander then ExpandHead(player) end
+    end
+
+    player.CharacterAdded:Connect(function(char)
+        task.wait(0.4)
+        if Settings.GreenHologram then ApplyGreenChams(char) end
+        if Settings.BlueArms then ApplyBlueArms(char) end
+        if Settings.Headshot100 or Settings.HitboxExpander then ExpandHead(player) end
+    end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do SetupPlayer(player) end
+Players.PlayerAdded:Connect(SetupPlayer)
+Players.PlayerRemoving:Connect(function(player)
+    RemoveTracer(player)
+    RemoveSkeleton(player)
+    originalSizes[player] = nil
+end)
+
+RunService.RenderStepped:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            if Settings.GreenHologram then
+                if not player.Character:FindFirstChild("PlayerChams") then ApplyGreenChams(player.Character) end
+            else
+                RemoveGreenChams(player.Character)
+            end
+
+            if Settings.BlueArms then
+                if not player.Character:FindFirstChild("BlueArmsChams") then ApplyBlueArms(player.Character) end
+            else
+                RemoveBlueArms(player.Character)
+            end
+
+            if Settings.Headshot100 or Settings.HitboxExpander then
+                ExpandHead(player)
+            else
+                RestoreHead(player)
+            end
+        end
+    end
+
+    -- Lines
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    for player, data in pairs(tracers) do
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if Settings.Lines and myRoot and root then
+            data.Att0.Parent = myRoot
+            data.Att1.Parent = root
+            data.Beam.Parent = myRoot
+            data.Beam.Enabled = true
+        else
+            data.Beam.Enabled = false
+        end
+    end
+
+    -- Skeleton
+    for player, lines in pairs(skeletons) do
+        local character = player.Character
+        if not character or not Settings.Skeleton then
+            for _, line in pairs(lines) do line.Visible = false end
+            continue
+        end
+
+        local isR15 = character:FindFirstChild("UpperTorso") ~= nil
+        local boneList = isR15 and bonesR15 or bonesR6
+
+        for i, bonePair in ipairs(boneList) do
+            local part1 = character:FindFirstChild(bonePair[1])
+            local part2 = character:FindFirstChild(bonePair[2])
+            local line = lines[i]
+
+            if part1 and part2 and line then
+                local pos1, onScreen1 = Camera:WorldToViewportPoint(part1.Position)
+                local pos2, onScreen2 = Camera:WorldToViewportPoint(part2.Position)
+                if onScreen1 or onScreen2 then
+                    line.From = Vector2.new(pos1.X, pos1.Y)
+                    line.To = Vector2.new(pos2.X, pos2.Y)
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
+            elseif line then
+                line.Visible = false
+            end
+        end
+        for i = #boneList + 1, #lines do lines[i].Visible = false end
+    end
+
+    -- Aim Assist Crosshair
+    if Settings.AimAssist then
+        local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        crosshair.Position = center
+        crosshair.Color = Settings.CrosshairColor
+        crosshair.Visible = true
+
+        crosshair2.From = Vector2.new(center.X - 10, center.Y)
+        crosshair2.To = Vector2.new(center.X + 10, center.Y)
+        crosshair2.Color = Settings.CrosshairColor
+        crosshair2.Visible = true
+
+        crosshair3.From = Vector2.new(center.X, center.Y - 10)
+        crosshair3.To = Vector2.new(center.X, center.Y + 10)
+        crosshair3.Color = Settings.CrosshairColor
+        crosshair3.Visible = true
+    else
+        crosshair.Visible = false
+        crosshair2.Visible = false
+        crosshair3.Visible = false
+    end
+end)
+
+-- Aimbot
+local function GetClosestHead()
+    local closest, shortest = nil, Settings.AimbotFOV
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character.Humanoid and player.Character.Humanoid.Health > 0 then
+            if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
+            local pos, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+            if onScreen then
+                local dist = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(pos.X, pos.Y)).Magnitude
+                if dist < shortest then
+                    shortest = dist
+                    closest = player.Character.Head
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if Settings.Aimbot and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local target = GetClosestHead()
+        if target then
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Position), Settings.AimbotSmooth)
+        end
+    end
+end)
+
+-- Speed & Jump
+RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    if Settings.Speed then
+        hum.WalkSpeed = Settings.SpeedValue
+    else
+        hum.WalkSpeed = 16
+    end
+
+    if Settings.JumpPower then
+        hum.JumpPower = Settings.JumpValue
+        hum.JumpHeight = Settings.JumpValue / 7.2
+    else
+        hum.JumpPower = 50
+    end
+end)
+
+print("ALEX FF PANEL | V1 Free versión loaded")
